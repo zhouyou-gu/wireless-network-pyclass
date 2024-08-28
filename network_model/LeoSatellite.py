@@ -86,14 +86,6 @@ if __name__ == "__main__":
     satellite = Trajectory(0, "Starlink-1", altitude=satellite_altitude_km, inclination=50, raan=0)
     positions = satellite.simulate_n_points(60, 100)
     
-    for p in positions:
-        # Calculate the footprint area and radius
-        footprint_radius_km, footprint_area_km2 = calculate_footprint_area(satellite_altitude_km)
-
-        # Estimate the land and ocean area within the footprint
-        land_area_km2, ocean_area_km2 = estimate_land_ocean_area(50, p[0], p[1])
-        print(footprint_radius_km,land_area_km2,ocean_area_km2,p[0], p[1])
-    
     lats, lons = zip(*positions)
     
     # Convert longitudes to handle crossing of the dateline (-180 to 180 degrees)
