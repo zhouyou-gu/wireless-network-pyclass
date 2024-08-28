@@ -1,15 +1,25 @@
 import math
 import numpy as np
 
+
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+
+from shapely.geometry import Point, Polygon
+from shapely.ops import unary_union
+
+EARTH_RADIUS_KM = 6371.0
+
+
 class Trajectory:
-    def __init__(self, id, name, altitude, inclination, raan, earth_radius=6371):
+    def __init__(self, id, name, altitude, inclination, raan):
         self.id = id
         self.name = name
         self.altitude = altitude  # km above Earth's surface
         self.inclination = math.radians(inclination)  # Convert to radians
         self.raan = math.radians(raan)  # Right Ascension of the Ascending Node in radians
-        self.earth_radius = earth_radius  # Earth's radius in km
-        self.semi_major_axis = self.altitude + self.earth_radius  # Semi-major axis in km
+        self.semi_major_axis = self.altitude + EARTH_RADIUS_KM  # Semi-major axis in km
         self.mu = 398600  # Earth's gravitational parameter, km^3/s^2
         self.angular_velocity_earth = 7.2921159e-5  # Earth's angular velocity in rad/s
         
@@ -66,16 +76,25 @@ class Trajectory:
             self.step(time_step_second)
             lat, lon = self.ground_track()
             positions.append((lat, lon))
-        return np.asarray(positions)
+        return positions
+
+
+
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
-
+    satellite_altitude_km = 550
     # Assuming `satellite` is an instance of a class with a `simulate_n_points` method
-    satellite = Trajectory(0, "Starlink-1", altitude=550, inclination=50, raan=0)
+    satellite = Trajectory(0, "Starlink-1", altitude=satellite_altitude_km, inclination=50, raan=0)
     positions = satellite.simulate_n_points(60, 100)
+    
+    for p in positions:
+        # Calculate the footprint area and radius
+        footprint_radius_km, footprint_area_km2 = calculate_footprint_area(satellite_altitude_km)
+
+        # Estimate the land and ocean area within the footprint
+        land_area_km2, ocean_area_km2 = estimate_land_ocean_area(50, p[0], p[1])
+        print(footprint_radius_km,land_area_km2,ocean_area_km2,p[0], p[1])
+    
     lats, lons = zip(*positions)
     
     # Convert longitudes to handle crossing of the dateline (-180 to 180 degrees)
@@ -88,35 +107,27 @@ if __name__ == "__main__":
     ax.set_global()
 
     # Add features to the map
-    ax.add_feature(cfeature.COASTLINE)
     ax.add_feature(cfeature.LAND, facecolor='lightgray')
     ax.add_feature(cfeature.OCEAN, facecolor='aqua')
+    ax.add_feature(cfeature.COASTLINE)
     ax.add_feature(cfeature.LAKES, facecolor='blue')
     ax.add_feature(cfeature.RIVERS, edgecolor='blue')
-
+        
 
     # Plot the satellite trajectory, ensuring continuous lines
+    plot_quiver_counter = 0
     for i in range(len(lons) - 1):
         if abs(lons[i+1] - lons[i]) > 180:
             # Handle the discontinuity by breaking the line
-            print(lons[i+1] , lons[i])
-            ax.plot([lons[i], np.sign(lons[i]) * 180], [lats[i], lats[i]], color='red', linewidth=2, marker='o', markersize=4)
-            ax.plot([np.sign(lons[i+1]) * 180, lons[i+1]], [lats[i+1], lats[i+1]], color='red', linewidth=2, marker='o', markersize=4)
+            ax.plot([lons[i], np.sign(lons[i]) * 180], [lats[i], lats[i]], color='red', linewidth=2, marker='o', markersize=1)
+            ax.plot([np.sign(lons[i+1]) * 180, lons[i+1]], [lats[i+1], lats[i+1]], color='red', linewidth=2, marker='o', markersize=1)
+            
         else:
-            ax.plot([lons[i], lons[i+1]], [lats[i], lats[i+1]], color='red', linewidth=2, marker='o', markersize=4)
-
-    print(lons[:-1:5],lats[:-1:5])
-    arrow_skip = 5  # Define how frequently to place arrows (every 5th point)
-    U = np.diff(lons[::arrow_skip])
-    V = np.diff(lats[::arrow_skip])
-
-    # Add arrows to indicate the direction of the satellite
-    # Use quiver to add arrows
-    arrow_skip = 5  # Define how frequently to place arrows (every 5th point)
-    ax.quiver(lons[::arrow_skip][:-1], lats[::arrow_skip][:-1],   # Positions
-            U, V,  # Directions
-            scale_units='xy', angles='xy', scale=1, color='blue', transform=ccrs.PlateCarree())
-
+            ax.plot([lons[i], lons[i+1]], [lats[i], lats[i+1]], color='red', linewidth=2, marker='o', markersize=1)
+            if plot_quiver_counter % 10 == 0:
+                ax.quiver(lons[i], lats[i],   # Positions
+                (lons[i+1] - lons[i]), (lats[i+1]-lats[i]), scale=100, width=0.005, color='blue')
+            plot_quiver_counter += 1
 
     # Add title and show plot
     ax.set_title('Satellite Trajectory on 2D Earth Texture')
