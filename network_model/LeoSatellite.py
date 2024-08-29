@@ -11,7 +11,7 @@ from shapely.ops import unary_union
 
 EARTH_RADIUS_KM = 6371.0
 
-class Trajectory:
+class Trajectory():
     def __init__(self, id, name, altitude, inclination, raan):
         self.id = id
         self.name = name
