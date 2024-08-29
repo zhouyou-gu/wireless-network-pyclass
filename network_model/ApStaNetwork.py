@@ -156,7 +156,7 @@ class ApStaNetwork(InterferenceHelper):
         for i in range(self.n_sta):
             while np.min(ret[i,:]) > 90:
                 for j in range(self.n_ap):
-                    ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.ap_locs[j],noise=True)
+                    ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.ap_locs[j])
         return ret
 
     def get_loss_sta_sta(self):
@@ -165,15 +165,15 @@ class ApStaNetwork(InterferenceHelper):
             for j in range(i,self.n_sta):
                 if i == j:
                     continue
-                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.sta_locs[j],noise=True)
+                ret[i,j] = self._get_loss_between_locs(self.sta_locs[i],self.sta_locs[j])
                 ret[j,i] = ret[i,j]
         return ret
 
-    def _get_loss_between_locs(self, a, b, noise=False):
+    def _get_loss_between_locs(self, a, b):
         dis = np.linalg.norm(np.array(a)-np.array(b),ord=2)
-        return self._get_loss_distance(dis, noise)
+        return self._get_loss_distance(dis)
 
-    def _get_loss_distance(self, dis, noise=False):
+    def _get_loss_distance(self, dis):
         #shadowing is disabled
         return self.fre_dis_to_loss_dB(self.fre_Hz,dis)
 
